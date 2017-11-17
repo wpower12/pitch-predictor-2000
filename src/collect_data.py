@@ -1,8 +1,8 @@
 #!/usr/bin/python
 import pickle, sys, mlbgame, pymysql
-
 # saves a python object filled with pitch sequences from a year of games.
 # assumes there is a MySQL database containing the LahmanDB running on localhost.
+# Need the lahmanDB to get the hand data for each player.
 
 PITCH_DATA_DIR = "data/"
 HOST = 'localhost'
@@ -42,6 +42,7 @@ def get_pitch_seqs_from_game(conn, game_id):
 		for ab in inning['top']+inning['bottom']:
 			pitch_seq = []
 			for pitch in ab.pitches:
+				if pitch.pitch_type == '': return [] # If we have no type string, just return an empty list. 
 				pitch_seq.append(pitch.pitch_type)
 			feature_vec = get_feature_vec(conn, batters[ab.batter], pitchers[ab.pitcher])
 			if feature_vec is not None:
@@ -58,21 +59,24 @@ if __name__ == "__main__":
 									charset='utf8mb4',
 									cursorclass=pymysql.cursors.DictCursor)
 
-	year = mlbgame.games(YEAR_TO_MIGRATE)
-	year = mlbgame.combine_games(year)
-	n = len(year)
-	i = 0
-	sequences = []
-	print("generating all sequences from games from {}:\ngame: 0/{}".format(YEAR_TO_MIGRATE, n))
-	for g in year:
-		i += 1
-		try:
-			s = get_pitch_seqs_from_game(conn_ldb, g.game_id)
-			sequences += s
-			print('{}/{} seq_len: {}'.format(i,n, len(sequences)))
-		except:
-			print('{}/{} - error with game {}'.format(i,n, g.game_id))
+	# Saving after every month cause this takes FOREVERself.
+	for m in range(3, 12):
+		month = mlbgame.games(YEAR_TO_MIGRATE, m)
+		month = mlbgame.combine_games(month)
+		n = len(month)
+		i = 0
+		sequences = []
+		print("generating all sequences from games from {}/{}:\ngame: 0/{}".format(m, YEAR_TO_MIGRATE, n))
+		for g in month:
+			i += 1
+			try:
+				s = get_pitch_seqs_from_game(conn_ldb, g.game_id)
+				sequences += s
+				print('{}/{} seq_len: {}'.format(i,n, len(sequences)))
+			except:
+				print('{}/{} - error with game {}'.format(i,n, g.game_id))
 
-	fname = "{}/pitches_{}.p".format(PITCH_DATA_DIR, YEAR_TO_MIGRATE)
-	pickle.dump( sequences, open( fname, "wb" ) )
+		fname = "{}/pitches_{}_{}.p".format(PITCH_DATA_DIR, YEAR_TO_MIGRATE, m)
+		pickle.dump( sequences, open( fname, "wb" ) )
+
 conn_ldb.close()

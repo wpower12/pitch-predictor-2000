@@ -1,0 +1,17 @@
+* 'SL' - 72496  -     slider
+* 'KC' - 9799   -    knuckle-curve
+* 'CH' - 49713  -     changeup
+* 'SI' - 35696  -     fastball (sinker)
+* 'FO' - 191    -   pitch-out
+* 'FS' - 7301   -    fastball 
+* 'CU' - 41541  -     curveball
+* 'PO' - 126    -    pitch-out (would be better modeled with on-base info)
+* 'KN' - 1538   -    knuckleball
+* 'FF' - 169174 -      fastball (four-seam)
+* 'EP' - 14     -  eephus
+* 'IN' - 1853   -    intentional walk
+* 'SC' - 26     -  screwball
+* 'FT' - 64720  -     fastball (two-seam)
+* 'FC' - 24299  -     fastball (cutter)   
+* 'UN' - 6      - unidentified (need to deal with this)
+

@@ -113,3 +113,38 @@ def build_data_set_from_year(year, months):
 	pickle.dump([X_full, f_full, y_full], open("../data/pitches_full_{}.p".format(year), "wb"))
 	return X_full, f_full, y_full, longest_seq
 
+def build_data_set_from_years(years, months):
+    full_data = [] 
+    for y in years:
+        for m in months:
+            fn = "../data/pitches_{}_{}.p".format(y, m)
+            try:
+                seqs = pickle.load(open(fn, "rb"))
+                full_data += seqs
+            except:
+                print("error opening {}".format(fn))
+
+    cleaned_data = [] 
+    longest_seq = 0
+    empties_or_single = 0
+    pitch_types = set()
+    for line in full_data:
+        if(len(line[1]) > longest_seq): longest_seq = len(line[1])
+        if(len(line[1]) <= 1): 
+            empties_or_single += 1
+        else:
+            cleaned_data.append(line)
+
+    X_full = [] # Sequences of onehots.
+    f_full = [] # Feature vectors
+    y_full = [] # index of correct pitch in the one-hot, starting at X[1]
+    for line in cleaned_data: 
+        try:
+            X_full.append(create_oneshot_seq(line, longest_seq))
+            f_full.append(create_handpos_feature_vec(line))
+            y_full.append(create_target(line, longest_seq))
+        except:
+            print("error with line {}".format(line))
+
+    return X_full, f_full, y_full, longest_seq
+

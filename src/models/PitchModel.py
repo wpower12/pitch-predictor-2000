@@ -18,6 +18,7 @@ data will be a 3 entry array: [X, F, y]
 """
 import tensorflow as tf
 import numpy as np
+from progress.bar import Bar
 
 class PitchModel:
 	PITCH_MAP = {
@@ -67,7 +68,7 @@ class PitchModel:
 		self.CELL_TYPE     = cell_type 
 		self.LAYER_SIZE    = layer_size 
 
-	def run(self, data, batch_size, epochs, file_prefix):
+	def train(self, data, batch_size, epochs, file_prefix):
 		# data = [x, f, y]
 		tf.reset_default_graph()
 		NUM_INPUTS   = 16    # Size of the input vector (the number of possible pitch types)
@@ -78,7 +79,7 @@ class PitchModel:
 			FEATURE_SIZE = len(data[1][0])    # Size of the additional feature vector.
 			F = tf.placeholder(tf.float32, [None, FEATURE_SIZE], name="F") 
 		else:
-			F = tf.placeholder(tf.float32, [batch_size, FEATURE_SIZE], name="F") 
+			F = tf.placeholder(tf.float32, [None, None], name="F") 
 
 		X = tf.placeholder(tf.float32, [None, MAX_SIZE, NUM_INPUTS], name="X")
 		y = tf.placeholder(tf.int32, [None, MAX_SIZE], name="y") 
@@ -125,6 +126,7 @@ class PitchModel:
 
 		merged = tf.summary.merge_all()
 		saver = tf.train.Saver()
+		p_bar = Bar('training', max=iterations)
 		with tf.Session() as sess:
 			summary_writer = tf.summary.FileWriter('../graphs', sess.graph)
 			init.run()
@@ -132,8 +134,9 @@ class PitchModel:
 				X_batch, F_batch, y_batch = get_training_batch(data[0], data[1], data[2], batch_size)
 				_, l, summary = sess.run([training_op, loss, merged], feed_dict={X: X_batch, F: F_batch, y: y_batch})
 				summary_writer.add_summary(summary, i)
-				if i%10 == 0: print("loss at i {}: {}".format(i, l))
+				p_bar.next()
 
+			p_bar.finish()
 			fpath = saver.save(sess, "../graphs/{}.ckpt".format(file_prefix))
 			print("model saved as: {}".format(fpath))
 			summary_writer.close()

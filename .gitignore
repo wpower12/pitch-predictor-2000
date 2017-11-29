@@ -1,1 +1,4 @@
 /data/*
+/graphs/*
+/submissions/*
+*/__pycache__/*

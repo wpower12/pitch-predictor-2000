@@ -10,7 +10,12 @@ USER = 'mlbuser'
 PASS = 'password'
 DB_LAHMAN = 'lahman2016'
 
-def get_feature_vec(conn, batter, pitcher):
+def get_onbase_vector(atbat):
+	onbase = [atbat.b1 != '', atbat.b2 != '', atbat.b3 != '']
+	onbase = [1 if i else 0 for i in onbase]
+	return onbase
+
+def get_features(conn, atbat, batter, pitcher):
 	ret = None
 	b_bats, p_throws = None, None 
 	try:
@@ -23,7 +28,8 @@ def get_feature_vec(conn, batter, pitcher):
 			cursor.execute(sql, (pitcher.id))
 			results = cursor.fetchone()
 			p_throws = results['throws']
-		ret = [b_bats, p_throws, batter.pos]
+		onbase = get_onbase_vector(atbat)
+		ret = [b_bats, p_throws, batter.pos, onbase]
 	except:
 		print("error building feature for {} to {}".format(pitcher.name, batter.name))
 	return ret
@@ -44,7 +50,7 @@ def get_pitch_seqs_from_game(conn, game_id):
 			for pitch in ab.pitches:
 				if pitch.pitch_type == '': return [] # If we have no type string, just return an empty list. 
 				pitch_seq.append(pitch.pitch_type)
-			feature_vec = get_feature_vec(conn, batters[ab.batter], pitchers[ab.pitcher])
+			feature_vec = get_features(conn, ab, batters[ab.batter], pitchers[ab.pitcher])
 			if feature_vec is not None:
 				atbats.append([feature_vec, pitch_seq])
 	return atbats
@@ -55,6 +61,7 @@ if __name__ == "__main__":
 	START_MONTH = 3
 	if(len(sys.argv) == 3):
 		START_MONTH = int(sys.argv[2])
+
 
 	conn_ldb = pymysql.connect(host=HOST,
 									user=USER,
@@ -83,4 +90,4 @@ if __name__ == "__main__":
 		fname = "{}/pitches_{}_{}.p".format(PITCH_DATA_DIR, YEAR_TO_MIGRATE, m)
 		pickle.dump( sequences, open( fname, "wb" ) )
 
-conn_ldb.close()
+	conn_ldb.close()

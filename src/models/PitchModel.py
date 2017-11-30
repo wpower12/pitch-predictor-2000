@@ -21,47 +21,6 @@ import numpy as np
 from progress.bar import Bar
 
 class PitchModel:
-	PITCH_MAP = {
-	    'KC': 0,
-	    'CH': 1,
-	    'SL': 2,
-	    'SI': 3,
-	    'FO': 4,
-	    'FS': 5,
-	    'CU': 6,
-	    'PO': 7,
-	    'KN': 8,
-	    'FF': 9,
-	    'EP': 10,
-	    'IN': 11,
-	    'SC': 12,
-	    'FT': 13,
-	    'FC': 14,
-	    'UN': 15
-	}
-
-	POS_MAP = {
-	    '1B': 0,
-	    '2B': 1,
-	    '3B': 2,
-	    'PR': 3,
-	    'P':  4,
-	    'C':  5,
-	    'DH': 6,
-	    'SS': 7,
-	    'PH': 8,
-	    'CF': 9,
-	    'RF': 10,
-	    'LF': 11
-	}
-
-	HAND_MAP ={
-	    'L': 0.0,
-	    'R': 1.0,
-	    'B': 0.5, # Just doing this for now. 
-	    'S': 0.5
-	}
-
 	def __init__(self, model_type, learning_rate, cell_type, layer_size):
 		self.MODEL_TYPE    = model_type
 		self.LEARNING_RATE = learning_rate
@@ -103,7 +62,7 @@ class PitchModel:
 		else:
 			logits = tf.contrib.layers.fully_connected(outputs, NUM_OUTPUTS)
 
-		prediction = tf.argmax(logits, axis=1, name="prediction", output_type=tf.int32)
+		prediction = tf.argmax(logits, axis=2, name="prediction", output_type=tf.int32)
 
 		### Loss, Optimization, Training.  
 		loss = tf.contrib.seq2seq.sequence_loss(logits, 
@@ -140,7 +99,8 @@ class PitchModel:
 			fpath = saver.save(sess, "../graphs/{}.ckpt".format(file_prefix))
 			print("model saved as: {}".format(fpath))
 			summary_writer.close()
-
+			X_batch, F_batch, y_batch = get_training_batch(data[0], data[1], data[2], batch_size)
+			
 	def test(self, data, file_prefix):
 		tf.reset_default_graph()
 		sess = tf.Session()
@@ -163,6 +123,5 @@ class PitchModel:
 		total = tf.count_nonzero(seq_mask)
 
 		feeddict = {X: data[0], F: data[1], y: data[2]}
-		
 		c, t = sess.run([correct, total], feeddict)
 		return (1.0*c)/(1.0*t)

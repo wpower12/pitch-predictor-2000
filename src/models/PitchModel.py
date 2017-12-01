@@ -21,11 +21,11 @@ import numpy as np
 from progress.bar import Bar
 
 class PitchModel:
-	def __init__(self, model_type, learning_rate, cell_type, layer_size):
+	def __init__(self, model_type, learning_rate, cell_type, layer_sizes):
 		self.MODEL_TYPE    = model_type
 		self.LEARNING_RATE = learning_rate
 		self.CELL_TYPE     = cell_type 
-		self.LAYER_SIZE    = layer_size 
+		self.LAYER_SIZES    = layer_sizes 
 
 	def train(self, data, batch_size, epochs, file_prefix):
 		# data = [x, f, y]
@@ -49,11 +49,14 @@ class PitchModel:
 		seq_mask = tf.sequence_mask(seq_len, maxlen=MAX_SIZE, dtype=tf.float32, name="seq_mask") # Create a mask from these lengths
 
 		if self.CELL_TYPE == "rnn":
-			cell = tf.contrib.rnn.BasicRNNCell(num_units=self.LAYER_SIZE)
+			layers = [tf.contrib.rnn.BasicRNNCell(num_units=s) for s in self.LAYER_SIZES]
 		else:
-			cell = tf.contrib.rnn.BasicLSTMCell(num_units=self.LAYER_SIZE)
+			layers = [tf.contrib.rnn.BasicLSTMCell(num_units=s) for s in self.LAYER_SIZES]
 
-		outputs, states = tf.nn.dynamic_rnn(cell, X, dtype=tf.float32, sequence_length=seq_len) 
+		if len(layers) > 1:
+			outputs, states = tf.nn.dynamic_rnn(layers[0], X, dtype=tf.float32, sequence_length=seq_len) 
+		else:
+			outputs, states = tf.nn.rnn_cell.MultiRNNCell(layers)
 
 		if self.MODEL_TYPE == "feature":
 			F_expanded = tf.tile(tf.expand_dims(F, 1), [1, MAX_SIZE, 1])

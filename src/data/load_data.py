@@ -42,7 +42,7 @@ HAND_MAP ={
 ## Helper Functions ##############################
 
 # creates the hand+pos feature vector for a sequence.
-def create_handpos_feature_vec(seq):
+def create_handposbase_feature_vec(seq):
     # Create positions one-hot
     pos = np.zeros((len(POS_MAP),), dtype=np.float32)
     for p in seq[0][2].split("-"):
@@ -52,7 +52,10 @@ def create_handpos_feature_vec(seq):
     hands = np.zeros((2,), dtype=np.float32)
     hands[0] = HAND_MAP[seq[0][0]]
     hands[1] = HAND_MAP[seq[0][1]]
-    return np.concatenate((hands, pos))
+
+    # on base 
+    base = seq[0][3]
+    return np.concatenate((hands, pos, base))
     
 # Creates padded one-hot sequences.
 def create_oneshot_seq(seq, max_len):
@@ -107,7 +110,7 @@ def build_data_set_from_year(year, months):
 	y_full = [] # index of correct pitch in the one-hot, starting at X[1]
 	for line in cleaned_data: 
 		X_full.append(create_oneshot_seq(line, longest_seq))
-		f_full.append(create_handpos_feature_vec(line))
+		f_full.append(create_handposbase_feature_vec(line))
 		y_full.append(create_target(line, longest_seq))
 
 	pickle.dump([X_full, f_full, y_full], open("../data/pitches_full_{}.p".format(year), "wb"))
@@ -141,7 +144,7 @@ def build_data_set_from_years(years, months):
     for line in cleaned_data: 
         try:
             X_full.append(create_oneshot_seq(line, longest_seq))
-            f_full.append(create_handpos_feature_vec(line))
+            f_full.append(create_handposbase_feature_vec(line))
             y_full.append(create_target(line, longest_seq))
         except:
             print("error with line {}".format(line))

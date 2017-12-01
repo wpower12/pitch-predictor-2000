@@ -53,18 +53,20 @@ class PitchModel:
 		else:
 			layers = [tf.contrib.rnn.BasicLSTMCell(num_units=s) for s in self.LAYER_SIZES]
 
-		if len(layers) > 1:
-			outputs, states = tf.nn.dynamic_rnn(layers[0], X, dtype=tf.float32, sequence_length=seq_len) 
-		else:
-			outputs, states = tf.nn.rnn_cell.MultiRNNCell(layers)
-
+		# Concat the feature vector to the input if its the feature model. 
 		if self.MODEL_TYPE == "feature":
 			F_expanded = tf.tile(tf.expand_dims(F, 1), [1, MAX_SIZE, 1])
-			combined_outputs = tf.concat((outputs, F_expanded), 2)
-			logits = tf.contrib.layers.fully_connected(combined_outputs, NUM_OUTPUTS)
+			X_in = tf.concat((X, F_expanded), 2)
 		else:
-			logits = tf.contrib.layers.fully_connected(outputs, NUM_OUTPUTS)
+			X_in = X 
+			
+		if len(layers) > 1:
+			layers = tf.nn.rnn_cell.MultiRNNCell(layers)
+			outputs, states = tf.nn.dynamic_rnn(layers, X_in, dtype=tf.float32, sequence_length=seq_len) 
+		else:
+			outputs, states = tf.nn.dynamic_rnn(layers[0], X_in, dtype=tf.float32, sequence_length=seq_len)
 
+		logits = tf.contrib.layers.fully_connected(outputs, NUM_OUTPUTS)
 		prediction = tf.argmax(logits, axis=2, name="prediction", output_type=tf.int32)
 
 		### Loss, Optimization, Training.  

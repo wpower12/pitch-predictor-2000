@@ -15,17 +15,17 @@ random.shuffle(data)
 X_full, f_full, y_full = zip(*data)
 
 NUM_TRAIN = 45000
-NUM_TEST  = 1000
+NUM_TEST  = 4500
 
 X_train, f_train, y_train = X_full[:NUM_TRAIN], f_full[:NUM_TRAIN], y_full[:NUM_TRAIN]
 X_test, f_test, y_test    = X_full[NUM_TRAIN:NUM_TRAIN+NUM_TEST], f_full[NUM_TRAIN:NUM_TRAIN+NUM_TEST], y_full[NUM_TRAIN:NUM_TRAIN+NUM_TEST]
 print("data split. {} training examples, {} test examples.".format(NUM_TRAIN, NUM_TEST))
 
-RATE = 0.1
+RATE = 0.001
 LAYERSIZES = [64, 32]
 EPOCHS = 5
-BATCH_SIZE = 20
-TEST_ID = "layertest00"
+BATCH_SIZE = 50
+TEST_ID = "multilayer_0-001_64_32"
 
 model_type = "feature"
 cell_type  = "lstm"

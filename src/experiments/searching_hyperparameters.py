@@ -20,9 +20,11 @@ data left over to make the 24 folds.
 import pickle
 import numpy as np
 import random
-from models.PitchModel import *
+import sys
+sys.path.append('../')
+from models.SequenceModel import *
 
-FULL_DATA_FN = "../data/full_handpos_pitches.p"
+FULL_DATA_FN = "../../data/full_handpos_pitches.p"
 X_full, f_full, y_full = pickle.load(open(FULL_DATA_FN, "rb"))
 print("data loaded from {}".format(FULL_DATA_FN))
 
@@ -43,15 +45,11 @@ EPOCHS = 3
 BATCH_SIZE = 100
 TEST_ID = "test01"
 
-# Model(model_type, learning_rate, cell_type, layer_size)
-# model.train(data, batch_size, epochs, prefix_id_for_experiment )
-# model.test(data, prefix_id_for_experiment)
-
 for rate in RATES:
 	for size in LAYERSIZES:
 		for model_type in ["feature", "basic"]:
 			for cell_type in ["rnn", "lstm"]:
-				model = PitchModel(model_type, rate, cell_type, size)
+				model = SequenceModel(model_type, rate, cell_type, [size])
 				r_str  = str(rate).replace(".", "-")
 				id_str = "{}_{}_{}_{}_{}".format(TEST_ID, model_type, cell_type, r_str, str(size))
 				print("training model: {}".format(id_str))

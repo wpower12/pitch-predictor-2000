@@ -1,10 +1,10 @@
 """
 Full training of the first feature model. Using parameters found from experimentation. 
 """
-import pickle
+import pickle, random, sys
 import numpy as np
-import random
-from models.PitchModel import *
+sys.path.append('../')
+from models.SequenceModel import *
 
 FULL_DATA_FN = "../data/full_handpos_pitches.p"
 X_full, f_full, y_full = pickle.load(open(FULL_DATA_FN, "rb"))
@@ -27,14 +27,14 @@ EPOCHS = 5
 BATCH_SIZE = 50
 TEST_ID = "multilayer_0-001_64_32"
 
-model_type = "basic"
+model_type = "feature"
 cell_type  = "lstm"
 
 r_str  = str(RATE).replace(".", "-")
 id_str = "{}_{}_{}".format(TEST_ID, model_type, cell_type)
 
 print("training model: {}".format(id_str))
-model = PitchModel(model_type, RATE, cell_type, LAYERSIZES)
+model = SequenceModel(model_type, RATE, cell_type, LAYERSIZES)
 model.train([X_train, f_train, y_train], BATCH_SIZE, EPOCHS, id_str)
 acc = model.test([X_test, f_test, y_test], id_str)
 print("acc: {}".format(acc))							

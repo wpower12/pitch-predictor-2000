@@ -1,7 +1,7 @@
 from data.load_data import *
 import pickle
 
-years  = [2016]
+years  = [2016, 2015, 2014, 2013]
 months = [3, 4, 5, 6, 7, 8, 9, 10]
 
 fn = "full_handposbase_pitches"

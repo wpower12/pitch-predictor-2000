@@ -20,18 +20,19 @@ import tensorflow as tf
 import numpy as np
 from progress.bar import Bar
 
-class PitchModel:
+class SequenceModel:
 	def __init__(self, model_type, learning_rate, cell_type, layer_sizes):
 		self.MODEL_TYPE    = model_type
 		self.LEARNING_RATE = learning_rate
 		self.CELL_TYPE     = cell_type 
 		self.LAYER_SIZES    = layer_sizes 
 
+	""" Trains a model on the data using the stored parameters. Saves the model to the relevant tf files, using the file_prefix."""
 	def train(self, data, batch_size, epochs, file_prefix):
 		# data = [x, f, y]
 		tf.reset_default_graph()
-		NUM_INPUTS   = 16    # Size of the input vector (the number of possible pitch types)
-		NUM_OUTPUTS  = 16    # Want a pitch type out, so same size as input.
+		NUM_INPUTS   = len(data[0][0][0])    # Size of the input vector (the number of possible pitch types)
+		NUM_OUTPUTS  = NUM_INPUTS    # Want a pitch type out, so same size as input.
 		MAX_SIZE     = len(data[0][0])    # the maximum size of a sequence.  Everything gets padded to this, and masked.
 		
 		if self.MODEL_TYPE == "feature":
@@ -59,7 +60,7 @@ class PitchModel:
 			X_in = tf.concat((X, F_expanded), 2)
 		else:
 			X_in = X 
-			
+
 		if len(layers) > 1:
 			layers = tf.nn.rnn_cell.MultiRNNCell(layers)
 			outputs, states = tf.nn.dynamic_rnn(layers, X_in, dtype=tf.float32, sequence_length=seq_len) 
@@ -81,31 +82,38 @@ class PitchModel:
 		init = tf.global_variables_initializer()
 
 		#### Training Phase ###############
-		iterations = int((1.0*epochs*len(data[0]))/(1.0*batch_size))
+		iterations_per_epoch = int((1.0*len(data[0]))/(1.0*batch_size))
 
 		# Random selection of batch
-		def get_training_batch(X, f, y, batch_size):
-		    ids = np.random.randint(0, len(X), batch_size) 
-		    return np.array(X)[ids], np.array(f)[ids], np.array(y)[ids]
+		def get_training_batch(X, f, y, i, batch_size):
+		    ids = np.random.randint(0, len(X), batch_size)
+
+		    l = i*batch_size
+		    if l < len(X)-batch_size:
+		    	u = l + batch_size
+		    else:
+		    	u = len(X)
+		    return np.array(X)[l:u], np.array(f)[l:u], np.array(y)[l:u]
 
 		merged = tf.summary.merge_all()
 		saver = tf.train.Saver()
-		p_bar = Bar('training', max=iterations)
+		p_bar = Bar('batches', max=iterations_per_epoch*epochs)
 		with tf.Session() as sess:
 			summary_writer = tf.summary.FileWriter('../graphs', sess.graph)
 			init.run()
-			for i in range(iterations):
-				X_batch, F_batch, y_batch = get_training_batch(data[0], data[1], data[2], batch_size)
-				_, l, summary = sess.run([training_op, loss, merged], feed_dict={X: X_batch, F: F_batch, y: y_batch})
-				summary_writer.add_summary(summary, i)
-				p_bar.next()
+			for e in range(epochs):
+				for i in range(iterations_per_epoch):
+					X_batch, F_batch, y_batch = get_training_batch(data[0], data[1], data[2], i, batch_size)
+					_, summary = sess.run([training_op, merged], feed_dict={X: X_batch, F: F_batch, y: y_batch})
+					summary_writer.add_summary(summary, i)
+					p_bar.next()
 
 			p_bar.finish()
 			fpath = saver.save(sess, "../graphs/{}.ckpt".format(file_prefix))
 			print("model saved as: {}".format(fpath))
 			summary_writer.close()
-			X_batch, F_batch, y_batch = get_training_batch(data[0], data[1], data[2], batch_size)
-			
+	
+	""" Loads a model from the tf files indicated by file_prefix, then calculates the number of correct predictions given the data."""		
 	def test(self, data, file_prefix):
 		tf.reset_default_graph()
 		sess = tf.Session()

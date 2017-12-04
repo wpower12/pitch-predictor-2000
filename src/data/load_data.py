@@ -1,5 +1,6 @@
 import pickle 
 import numpy as np
+import random 
 
 PITCH_MAP = {
     'KC': 0,
@@ -81,40 +82,37 @@ def create_target(seq, max_len):
         ret.append(0)
     return ret
 
-# Actual Loaders #################################
-def load_basic_data(fn):
-	raw_data = pickle.load(open(fn, 'rb'))
-	return raw_data
+def create_window_x(seq, ws):
+    features = np.array(create_handposbase_feature_vec(seq)).flatten()
+    seqs = []
 
+    for i in range(len(seq[1])):
+        sub_seq = []
+        if i < ws-1:
+            for zeros in range(ws-i):
+                sub_seq.append(np.zeros((len(PITCH_MAP),), dtype=np.float32))
+            start = ws-i
+        else:
+            start = i-ws
 
-def build_data_set_from_year(year, months):
-	full_data = [] 
-	for m in months:
-	    fn = "../data/pitches_{}_{}.p".format(year, m)
-	    seqs = pickle.load(open(fn, "rb"))
-	    full_data += seqs
+        for j in range(start, i):
+            p_oh = np.zeros((len(PITCH_MAP),), dtype=np.float32)
+            p = seq[1][j]
+            p_oh[PITCH_MAP[p]] = 1.0
+            sub_seq.append(p_oh)
+        sub_seq = np.array(sub_seq).flatten()
+        seqs.append(np.concatenate((features, sub_seq)))
+    return seqs
 
-	cleaned_data = [] 
-	longest_seq = 0
-	empties_or_single = 0
-	pitch_types = set()
-	for line in full_data:
-	    if(len(line[1]) > longest_seq): longest_seq = len(line[1])
-	    if(len(line[1]) <= 1): 
-	        empties_or_single += 1
-	    else:
-	        cleaned_data.append(line)
-
-	X_full = [] # Sequences of onehots.
-	f_full = [] # Feature vectors
-	y_full = [] # index of correct pitch in the one-hot, starting at X[1]
-	for line in cleaned_data: 
-		X_full.append(create_oneshot_seq(line, longest_seq))
-		f_full.append(create_handposbase_feature_vec(line))
-		y_full.append(create_target(line, longest_seq))
-
-	pickle.dump([X_full, f_full, y_full], open("../data/pitches_full_{}.p".format(year), "wb"))
-	return X_full, f_full, y_full, longest_seq
+def create_window_y(seq, ws):
+    ys = []
+    for i in range(len(seq[1])-1):
+        p_oh = np.zeros((len(PITCH_MAP),), dtype=np.float32)
+        p = seq[1][i+1]
+        p_oh[PITCH_MAP[p]] = 1.0
+        ys.append(p_oh)
+    ys.append(np.zeros((len(PITCH_MAP),), dtype=np.float32))
+    return ys
 
 def build_data_set_from_years(years, months):
     full_data = [] 
@@ -141,13 +139,80 @@ def build_data_set_from_years(years, months):
     X_full = [] # Sequences of onehots.
     f_full = [] # Feature vectors
     y_full = [] # index of correct pitch in the one-hot, starting at X[1]
+    errs = 0
     for line in cleaned_data: 
         try:
             X_full.append(create_oneshot_seq(line, longest_seq))
             f_full.append(create_handposbase_feature_vec(line))
             y_full.append(create_target(line, longest_seq))
         except:
-            print("error with line {}".format(line))
+            errs += 1
+    print("{} lines had errors".format(errs))
 
     return X_full, f_full, y_full, longest_seq
 
+def build_fake_sequences(length, alpha, period, reps):
+    ret = []
+    for i in range(length):
+        seq = ""
+        for p in range(period):
+            letter = random.choice(alpha)
+            seq += letter*reps
+        ret.append(seq)
+    return ret
+
+def build_fake_data_set(seqs, alpha_map, max_len):
+    X = []
+    f = []
+    y = []
+    oh_len = len(seqs[0])
+    for seq in seqs:
+        ex = []
+        target = []
+        for c in seq:
+            s_oh = np.zeros((len(alpha_map),), dtype=np.float32)
+            s_oh[alpha_map[c]] = 1.0
+            ex.append(s_oh)
+        X.append(ex)
+        f.append([0])
+    
+    for seq in seqs:
+        target = []
+        for c in seq[1:]:
+            target.append(alpha_map[c])
+        target.append(0)
+        y.append(target)
+    return X, f, y
+
+def build_window_data_set(years, months, window_size):
+    full_data = [] 
+    for y in years:
+        for m in months:
+            fn = "../../data/partials/pitches_{}_{}.p".format(y, m)
+            try:
+                seqs = pickle.load(open(fn, "rb"))
+                full_data += seqs
+            except:
+                print("error opening {}".format(fn))
+
+    cleaned_data = [] 
+    longest_seq = 0
+    empties_or_single = 0
+    pitch_types = set()
+    for line in full_data:
+        if(len(line[1]) > longest_seq): longest_seq = len(line[1])
+        if(len(line[1]) <= 1): 
+            empties_or_single += 1
+        else:
+            cleaned_data.append(line)
+
+    X = [] # an N by 2*window_size+19 array (2(handedness)+14(pos)+3(base))
+    y = [] # a N by num_pitches output (one_hot of the pitch)
+
+    for line in cleaned_data:
+        try:
+            X += create_window_x(line, window_size)
+            y += create_window_y(line, window_size)
+        except:
+            print("error with line: {}".format(line))
+    return X, y

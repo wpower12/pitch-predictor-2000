@@ -1,0 +1,2 @@
+model_checkpoint_path: "testing_fake_data.ckpt"
+all_model_checkpoint_paths: "testing_fake_data.ckpt"
